@@ -580,20 +580,16 @@ func (s *Server) Channels() *Channels {
 
 func (s *Server) startInterClusterServices(license *model.License) error {
 	if license == nil {
-		mlog.Debug("No license provided; Remote Cluster services disabled")
+		mlog.Debug("No License provided, bypassing license check")
+	} else if !license.HasRemoteClusterService() && !license.HasSharedChannels() {
+		mlog.Debug("License does not have remote cluster or shared channel features, bypassing license check")
 		return nil
 	}
 
-	// Remote Cluster service
-
-	// License check (assume enabled if shared channels enabled)
-	if !license.HasRemoteClusterService() && !license.HasSharedChannels() {
-		mlog.Debug("License does not have Remote Cluster services enabled")
-		return nil
-	}
-
-	// Config check
-	if !*s.platform.Config().ConnectedWorkspacesSettings.EnableRemoteClusterService && !*s.platform.Config().ConnectedWorkspacesSettings.EnableSharedChannels {
+	mlog.Debug("EnableRemoteClusterService value", mlog.Bool("value", *s.platform.Config().ConnectedWorkspacesSettings.EnableRemoteClusterService))
+	mlog.Debug("EnableSharedChannels value", mlog.Bool("value", *s.platform.Config().ConnectedWorkspacesSettings.EnableSharedChannels))
+	// Corrected logic: Ensure the services are enabled in the config
+	if !*s.platform.Config().ConnectedWorkspacesSettings.EnableRemoteClusterService {
 		mlog.Debug("Remote Cluster Service disabled via config")
 		return nil
 	}
@@ -614,14 +610,6 @@ func (s *Server) startInterClusterServices(license *model.License) error {
 	s.serviceMux.Unlock()
 
 	// Shared Channels service (depends on remote cluster service)
-
-	// License check
-	if !license.HasSharedChannels() {
-		mlog.Debug("License does not have shared channels enabled")
-		return nil
-	}
-
-	// Config check
 	if !*s.platform.Config().ConnectedWorkspacesSettings.EnableSharedChannels {
 		mlog.Debug("Shared Channels Service disabled via config")
 		return nil
